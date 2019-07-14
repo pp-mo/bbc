@@ -9,7 +9,7 @@ from sim.device import Device, Action, ClockTick
 
 # Test device (clock tick)
 clk = ClockTick('clock_01', period=10)
-print clk
+print(clk)
 
 startsig = Signal('start_clock')
 clk.connect('start', startsig)

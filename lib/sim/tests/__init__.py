@@ -16,11 +16,11 @@ from contextlib import contextmanager
 
 @contextmanager
 def fails(cls=Exception, show=True):
+    err = None
     try:
-        err = None
         yield
-    except cls as err:
-        pass
+    except cls as act_err:
+        err = act_err
     if err is None:
         msg = 'Expected error {} not seen.'
         if cls is Exception:

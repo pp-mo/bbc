@@ -53,7 +53,7 @@ class Xor2(Device):
 
 sig1 = Signal('s01')
 w01 = Wire('w01', delay=20.)
-print w01
+print(w01)
 w01.connect('input', sig1)
 
 x01 = Xor2('xor01')

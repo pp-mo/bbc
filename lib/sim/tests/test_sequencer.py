@@ -37,7 +37,7 @@ SEQ.add((17, callback2))
 SEQ.add((1000, callback2))
 SEQ.run(stop=500)
 print('... done up to t=500.')
-print 'Remaining:', SEQ.events
+print('Remaining events : {}'.format(SEQ.events))
 print('\nNow run to end ...')
 SEQ.run()
 print('... done')
