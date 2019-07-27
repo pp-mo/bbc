@@ -26,10 +26,11 @@ pip-log.txt
 # Created by Iris build
 *.so
 
-# Pydev/Eclipse files
+# Pydev/Eclipse/PyCharm files
 .project
 .pydevproject
 .settings
+.idea
 
 # Created by editiors
 *~
