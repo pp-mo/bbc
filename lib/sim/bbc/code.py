@@ -30,7 +30,7 @@ INSTRUCTION_CODE_REGISTERS = {
 # function to build a single instruction for the code table
 # code format:
 # *(instruction_name,  instruction_it_bits, instruction_k_value)
-def instruction(code, k):
+def instruction(code, k=0):
     """
     Build a single instruction entry for the code table.
 
@@ -61,7 +61,7 @@ code = [
     instruction('LDM', 3),  # 07
     instruction('ADI', -1),  # 08
     instruction('STM', 3),  # 09
-    instruction('SKC', 0),  # 10: skips while {3} > 0
-    instruction('JMP', -1),  # 11: endless loop !
+    instruction('SKC'), # 10: skips while {3} > 0
+    instruction('JMP', -1),  # 11: endless loop = STOP !
     instruction('JMP', -9)   # 12:  (13 - 9 = 4): back to "LOOP"
 ]
