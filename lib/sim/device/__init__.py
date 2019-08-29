@@ -86,7 +86,7 @@ class Device(object):
     def _input_common(self, name, time, signal):
         hooks = self._hooks.get(name, [])
         for hook in hooks:
-            hook(self, name, time, signal)
+            hook(self, time, signal)
         if name not in self._traces:
             return
         msg = '@{}: INPUT<{}.{}> {} ==> {}'
@@ -111,7 +111,7 @@ class Device(object):
     def _action_common(self, name, time, *args, **kwargs):
         hooks = self._hooks.get(name, [])
         for hook in hooks:
-            hook(self, name, time, *args, **kwargs)
+            hook(self, time, *args, **kwargs)
         if name not in self._traces:
             return
         argstrs = [str(time)]
