@@ -64,6 +64,7 @@ class Device(object):
         self.name = name
         self.seq = sequencer or DEFAULT_SEQUENCER
         self._traces = set()
+        self._hooks = {}
 
     def __str__(self):
         return '{}<{}>'.format(
@@ -82,7 +83,10 @@ class Device(object):
         # self.outputs[name] = signal
 
     @staticmethod
-    def _trace_input(self, name, time, signal):
+    def _input_common(self, name, time, signal):
+        hooks = self._hooks.get(name, [])
+        for hook in hooks:
+            hook(self, name, time, signal)
         if name not in self._traces:
             return
         msg = '@{}: INPUT<{}.{}> {} ==> {}'
@@ -98,13 +102,16 @@ class Device(object):
 
         @wraps(f)
         def _wrapper(self, time, signal):
-            self._trace_input(self, name, time, signal)
+            self._input_common(self, name, time, signal)
             return f(self, time, signal)
 
         return _wrapper
 
     @staticmethod
-    def _trace_action(self, name, time, *args, **kwargs):
+    def _action_common(self, name, time, *args, **kwargs):
+        hooks = self._hooks.get(name, [])
+        for hook in hooks:
+            hook(self, name, time, *args, **kwargs)
         if name not in self._traces:
             return
         argstrs = [str(time)]
@@ -125,12 +132,27 @@ class Device(object):
 
         @wraps(f)
         def _wrapper(self, time, *args, **kwargs):
-            self._trace_action(self, name, time, *args, **kwargs)
+            self._action_common(self, name, time, *args, **kwargs)
             return f(self, time, *args, **kwargs)
 
         return _wrapper
 
+    def hook(self, name, call):
+        # Works for both inputs and actions, but call signatures are different
+        # input_hook(device, name, time, signal
+        # action_hook(device, name, time, *args, **kwargs)
+        hooks = self._hooks.get(name, [])
+        hooks.append(call)
+        self._hooks[name] = hooks
+
+    def unhook(self, name, call):
+        hooks = self._hooks.get(name, [])
+        if call in hooks:
+            hooks.remove(call)
+            self._hooks[name] = hooks
+
     def trace(self, name, on=True):
+        # Works for both inputs and actions, but messages are different
         getattr(self, name)
         if on:
             self._traces.add(name)

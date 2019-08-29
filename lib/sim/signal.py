@@ -21,6 +21,9 @@ class Signal(object):
         self.previous = self.state
         self.state = state
         for conn in self.conns:
+            # TODO: should really send only the state, not itself ??
+            # current form for access to .state and .previous (?.name? : not really)
+            # NEEDED for trace, in current form.  But device tracing is nicer ...
             conn(time, self)
 
     def add_connection(self, call, index=-1):
