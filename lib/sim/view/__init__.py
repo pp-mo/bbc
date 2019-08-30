@@ -1,5 +1,6 @@
 """Resources for making animation views of sim.device.Device objects."""
 from datetime import datetime, timedelta
+import six
 
 import matplotlib.pyplot as plt
 
@@ -20,7 +21,7 @@ class DeviceView(object):
         therefore exist and have compatible signatures.
 
         """
-        if isinstance(name_or_names, basestring):
+        if isinstance(name_or_names, six.text_type):
             names = [name_or_names]
         else:
             names = name_or_names

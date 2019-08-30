@@ -1,3 +1,5 @@
+import six.moves
+
 from sim.signal import Signal, SIG_UNDEF
 from sim.sequencer import DEFAULT_SEQUENCER as SEQ
 from sim.device.latch import PulseLatch
@@ -37,5 +39,7 @@ latchview = device_view(latch,
     value_text_kwargs={'fontsize':60})
 
 scene = [latchview]
-ax = viz(scene, until_seqtime=350.0, speedup_factor=2.0, frame_interval_secs=0.05)
-plt.show()
+ax = viz(scene, until_seqtime=350.0, speedup_factor=12.0, frame_interval_secs=0.05)
+
+print('\n\nRETURN TO EXIT...>')
+six.moves.input()
