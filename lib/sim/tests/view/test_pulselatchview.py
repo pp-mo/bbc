@@ -29,12 +29,13 @@ SEQ.addall([
 
 from sim.view import device_view, viz
 
-from matplotlib.font_manager import FontProperties
+import matplotlib.pyplot as plt
 
 latchview = device_view(latch,
     input_xy=(0, 10),
     output_xy=(0, 2),
-    value_text_kwargs={'fontproperties':FontProperties(size=60)})
+    value_text_kwargs={'fontsize':60})
 
 scene = [latchview]
-viz(scene, until_seqtime=350.0, speedup_factor=2.0)
+ax = viz(scene, until_seqtime=350.0, speedup_factor=2.0, frame_interval_secs=0.05)
+plt.show()

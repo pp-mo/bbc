@@ -1,7 +1,6 @@
 import numpy as np
 from matplotlib.patches import Polygon, Circle
 from matplotlib.text import Text
-from matplotlib.font_manager import FontProperties
 
 from sim.view import DeviceView
 from sim.device.latch import PulseLatch
@@ -19,13 +18,18 @@ class PulseLatchView(DeviceView):
         self.output_x, self.output_y = output_xy
         self.min_hh = min_halfheight
         self.min_hw = min_halfwidth
-        self.outline_poly_kwargs = (outline_poly_kwargs or
-            {'edgecolor':'red', 'linewidth':1.5})
-        self.value_text_kwargs = value_text_kwargs or {}
+        self.outline_poly_kwargs = {'edgecolor':'red', 'linewidth':1.5}
+        if outline_poly_kwargs:
+            self.outline_poly_kwargs.update(outline_poly_kwargs)
+        self.value_text_kwargs = {'fontsize':30}
+        if value_text_kwargs:
+            self.value_text_kwargs.update(value_text_kwargs)
         self.onebit_mode = onebit_mode
-        self.onebit_circle_kwargs = (onebit_circle_kwargs or
-            {'facecolor':'blue', 'radius':4.0,
-             'edgecolor':'black', 'linewidth':1.5})
+        self.onebit_circle_kwargs = {
+            'facecolor':'blue', 'radius':4.0,
+            'edgecolor':'black', 'linewidth':1.5}
+        if onebit_circle_kwargs:
+            self.onebit_circle_kwargs.update(onebit_circle_kwargs)
         self.hook_device_calls(('input', 'clr'))
         self.value_text_unset = '---'
 
@@ -53,24 +57,25 @@ class PulseLatchView(DeviceView):
         poly = Polygon(xy=coords, closed=True,
                        **self.outline_poly_kwargs)
         self.ax.add_patch(poly)
-        self.els['box_poly'] = poly
+        self.box_poly = poly
 
         if self.onebit_mode:
             # Make a circle to show the 'blob'.
             circ = Circle(
-                xy=(centre_x, centre_y),
+                xy=(self.centre_x, self.centre_y),
                 axes=self.ax, **self.onebit_circle_kwargs)
             self.ax.add_patch(circ)
             self.els['blob_circle'] = circ
         else:
             # Make a text to show the value.
+            kwargs = {'fontsize':30}
+            kwargs.update(self.value_text_kwargs)
             txt = Text(
                 x=self.centre_x, y=self.centre_y, text=self.value_text_unset,
                 verticalalignment='center', horizontalalignment='center',
-                fontsize=30,
                 **self.value_text_kwargs)
             self.ax.add_artist(txt)
-            self.els['value_text'] = txt
+            self.value_text = txt
 
     def input(self, device, seq_time, signal):
         if signal.state != 0:
@@ -79,12 +84,13 @@ class PulseLatchView(DeviceView):
             self.anim_start = seq_time
             self.anim_duration = self.dev._t_d2c
             self.anim_end = self.anim_start + self.anim_duration
-            self.els['value_text'].set_text(str(signal.state))
-            self.els['value_text'].set_fontproperties(
-                FontProperties(style='italic', weight='bold'))
-            self.els['value_text'].set_y(self.upper_y)
+            self.value_text.set_text(str(signal.state))
+            self.value_text.set_fontstyle('italic')
+            self.value_text.set_fontweight('bold')
+            self.value_text.set_y(self.upper_y)
 
     def clr(self, device, seq_time, signal):
+        self.value_text = self.value_text
         # Start a clear-content animation.
         self.animate = 'clear'
         self.anim_start = seq_time
@@ -92,14 +98,14 @@ class PulseLatchView(DeviceView):
         self.anim_end = seq_time + self.anim_duration
         self.x_wobble_phases = 12 # out+back 3 times in each direction
         self.x_wobble_phase_time = self.anim_duration / self.x_wobble_phases
-        self.els['value_text'].set_text('--XXX--')
-        self.els['value_text'].set_fontproperties(FontProperties(style='italic'))
-        self.els['value_text'].set_color('red')
+        self.value_text.set_text('--XXX--')
+        self.value_text.set_fontstyle('italic')
+        self.value_text.set_color('red')
 
     def _phase_to_fract(self, time):
         cycle = (time - self.anim_start) / self.x_wobble_phase_time
-        phase = int(np.floor(cycle % 4.0))
         fract = cycle % 1.0
+        phase = int(np.floor(cycle % 4.0))
         if phase == 0:
             result = fract
         elif phase == 1:
@@ -119,26 +125,25 @@ class PulseLatchView(DeviceView):
                 fract = (seq_time - self.anim_start) / self.anim_duration
                 y_at = (self.upper_y + 
                         fract * (self.centre_y - self.upper_y))
-                self.els['value_text'].set_y(y_at)
+                self.value_text.set_y(y_at)
             else:
                 # Restore 'normality' + stop animation
-                self.els['value_text'].set_y(self.centre_y)
-                self.els['value_text'].set_fontproperties(
-                    FontProperties(style='normal', weight='normal'))
+                self.value_text.set_y(self.centre_y)
+                self.value_text.set_fontstyle('normal')
+                self.value_text.set_fontweight('normal')
                 self.animate = None
         elif self.animate == 'clear':
             if seq_time < self.anim_end:
                 fract = self._phase_to_fract(seq_time)
-                x_at = (self.centre_x - self.min_hw + 
-                        fract * 0.5 * self.min_hw)
-                self.els['value_text'].set_x(x_at)
+                x_at = (self.centre_x + 0.2 * self.min_hw * fract)
+                self.value_text.set_x(x_at)
             else:
                 # Restore 'normality' + stop animation
-                self.els['value_text'].set_x(self.centre_x)
-                self.els['value_text'].set_text('---')
-                self.els['value_text'].set_color('black')
-                self.els['value_text'].set_fontproperties(
-                    FontProperties(style='normal', weight='normal'))
+                self.value_text.set_x(self.centre_x)
+                self.value_text.set_text('---')
+                self.value_text.set_color('black')
+                self.value_text.set_fontstyle('normal')
+                self.value_text.set_fontweight('normal')
                 self.animate = None
 
         return self.animate is not None

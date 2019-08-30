@@ -9,7 +9,6 @@ time_now = datetime.now
 class DeviceView(object):
     def __init__(self, device, *args, **kwargs):
         self.dev = device
-        self.els = {}  # storage for graphical elements
         self.animate = None
 
     def hook_device_calls(self, name_or_names):
