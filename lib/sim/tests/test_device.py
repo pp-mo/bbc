@@ -19,12 +19,12 @@ clk.output.trace()
 
 
 # input_hook(device, name, time, signal
-def start_input_hook(device, name, time, signal):
-    print('\n  =START-INPUT-HOOK: into {}.{} : @{} = {}'.format(device.name, name, time, signal.state))
+def start_input_hook(device, time, signal):
+    print('\n  =START-INPUT-HOOK: into {}.start : @{} = {}'.format(device.name, time, signal.state))
 
 # action_hook(device, name, time, *args, **kwargs)
-def tick_action_hook(device, name, time):
-    print('\n  =TICK-ACTION-HOOK: into {}.{} @ {}'.format(device.name, name, time))
+def tick_action_hook(device, time):
+    print('\n  =TICK-ACTION-HOOK: into {}.tick @ {}'.format(device.name, time))
 
 clk.hook('start', start_input_hook)
 clk.hook('tick', tick_action_hook)
