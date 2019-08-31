@@ -82,6 +82,10 @@ class Device(object):
         setattr(self, name, signal)
         # self.outputs[name] = signal
 
+    def act(self, time, name, *args, **kwargs):
+        self.seq.add(
+            (time, Action(self, name, *args, **kwargs)))
+
     @staticmethod
     def _input_common(self, name, time, signal):
         hooks = self._hooks.get(name, [])

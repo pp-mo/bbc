@@ -42,14 +42,8 @@ class PulseLatch(Device):
             return
         self._state = 'capturing'
         self.output.set(time, SIG_UNDEF)
-        self.seq.addall([
-            (time + self._t_delay,
-             Action(self,
-                    '_output_update',
-                    signal.state)),
-            (time + self._t_d2c,
-             Action(self,
-                    '_latched'))])
+        self.act(time + self._t_delay, '_output_update', signal.state)
+        self.act(time + self._t_d2c, '_latched')
 
     @Device.input
     def clr(self, time, signal):
@@ -57,15 +51,8 @@ class PulseLatch(Device):
              ['ready', 'set'])
         self._state = 'clearing'
         self.output.set(time, SIG_UNDEF)
-        self.seq.addall([
-            (time + self._t_delay,
-             Action(self,
-                    '_output_update',
-                    state=0)),
-            (time + self._t_c2d,
-             Action(self,
-                    '_cleared'))
-        ])
+        self.act(time + self._t_delay, '_output_update', 0)
+        self.act(time + self._t_c2d,'_cleared')
 
     @Device.action
     def _latched(self, time):
