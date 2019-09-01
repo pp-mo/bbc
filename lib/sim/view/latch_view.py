@@ -2,6 +2,7 @@ import numpy as np
 from matplotlib.patches import Polygon, Circle
 from matplotlib.text import Text
 
+from sim import SlotsHolder
 from sim.view import DeviceView
 from sim.device.latch import PulseLatch
 
@@ -33,7 +34,21 @@ class PulseLatchView(DeviceView):
         self.hook_device_calls(('input', 'clr'))
         self.value_text_unset = '---'
 
-    def init(self, axes):
+    @staticmethod
+    def _get_element_state(element, AniDataType):
+        # 'element' is a visible matplotlib graphics object.
+        # AniDataType is a SlotsHolder whose slot_names are the names of the
+        # element attributes we want to adjust during an animation.
+        # ( NOTE: which *must* all have 'get_' and 'set_' methods )
+        # We return an 'AniDataType' filled with the current settings.
+        result = AniDataType()
+        for propname in AniDataType.slot_names:
+            get_method = getattr(element, 'get_' + propname)
+            value = get_method()
+            setattr(result, propname, value)
+        return result
+
+    def ani_init(self, axes):
         self.ax = axes
         self.centre_x = 0.5 * (self.input_x + self.output_x)
         min_x = min(self.input_x, self.output_x)
@@ -77,30 +92,17 @@ class PulseLatchView(DeviceView):
             self.ax.add_artist(txt)
             self.value_text = txt
 
-    def input(self, device, seq_time, signal):
-        if signal.state != 0:
-            # Start a capture animation.
-            self.animate = 'capture'
-            self.anim_start = seq_time
-            self.anim_duration = self.dev._t_d2c
-            self.anim_end = self.anim_start + self.anim_duration
-            self.value_text.set_text(str(signal.state))
-            self.value_text.set_fontstyle('italic')
-            self.value_text.set_fontweight('bold')
-            self.value_text.set_y(self.upper_y)
-
-    def clr(self, device, seq_time, signal):
-        self.value_text = self.value_text
-        # Start a clear-content animation.
-        self.animate = 'clear'
-        self.anim_start = seq_time
-        self.anim_duration = self.dev._t_d2c
-        self.anim_end = seq_time + self.anim_duration
-        self.x_wobble_phases = 12 # out+back 3 times in each direction
-        self.x_wobble_phase_time = self.anim_duration / self.x_wobble_phases
-        self.value_text.set_text('--XXX--')
-        self.value_text.set_fontstyle('italic')
-        self.value_text.set_color('red')
+        # Setup self._anidata to contain all animation state information.
+        AniData = SlotsHolder.newtype('pulselatch_anidata', ('value_text', 'blob_circle'))
+        ValueTextData = SlotsHolder.newtype(
+            'ValueTextData',
+            ('position', 'text', 'color', 'fontstyle', 'fontweight'))
+        self._anidata = AniData()
+        self._anidata.value_text = self._get_element_state(
+            self.value_text, ValueTextData)
+        # Also require a dummy 'bloc_circle' object (for now, just testing)
+        self.blob_circle = None
+        self._anidata.blob_circle = SlotsHolder.newtype('DummyBlobCircleData', [])
 
     def _phase_to_fract(self, time):
         cycle = (time - self.anim_start) / self.x_wobble_phase_time
@@ -118,45 +120,78 @@ class PulseLatchView(DeviceView):
             assert phase in [0, 1, 2, 3]
         return result
 
-    def update(self, seq_time):
-        """Update drawn elements for animation"""
+    def ani_updated_state(self, seq_time):
+        """Return an updated animation state, or None if no change."""
+        anim = self._anidata.copy()
+        work_todo = self.animate != None  # Save for final check
         if self.animate == 'capture':
             if seq_time < self.anim_end:
                 fract = (seq_time - self.anim_start) / self.anim_duration
-                y_at = (self.upper_y + 
+                y_at = (self.upper_y +
                         fract * (self.centre_y - self.upper_y))
-                self.value_text.set_y(y_at)
+                anim.value_text.position = (anim.value_text.position[0], y_at)
             else:
                 # Restore 'normality' + stop animation
-                self.value_text.set_y(self.centre_y)
-                self.value_text.set_fontstyle('normal')
-                self.value_text.set_fontweight('normal')
+                anim.value_text.position = (self.centre_x, self.centre_y)
+                anim.value_text.fontstyle = 'normal'
+                anim.value_text.fontweight = 'normal'
                 self.animate = None
         elif self.animate == 'clear':
             if seq_time < self.anim_end:
                 fract = self._phase_to_fract(seq_time)
                 x_at = (self.centre_x + 0.2 * self.min_hw * fract)
-                self.value_text.set_x(x_at)
+                anim.value_text.position = (x_at, anim.value_text.position[1])
             else:
                 # Restore 'normality' + stop animation
-                self.value_text.set_x(self.centre_x)
-                self.value_text.set_text('---')
-                self.value_text.set_color('black')
-                self.value_text.set_fontstyle('normal')
-                self.value_text.set_fontweight('normal')
+                anim.value_text.position = (self.centre_x, self.centre_y)
+                anim.value_text.text = '---'
+                anim.value_text.color = 'black'
+                anim.value_text.fontstyle = 'normal'
+                anim.value_text.fontweight = 'normal'
                 self.animate = None
 
-        return self.animate is not None
+        return anim if work_todo else None
 
+    def ani_apply_state(self, anim):
+        # This looks like *standard* implementation ?
+        for element_name in anim.slot_names:
+            element = getattr(self, element_name)  # A graphics component
+            new_settings = getattr(anim, element_name)  # Its required state
+            old_settings = getattr(self._anidata, element_name)
+                # Its current state (as we have it recorded)
+            if new_settings != old_settings:
+                for prop_name in new_settings.slot_names:
+                    set_value = getattr(new_settings, prop_name)
+                    old_value = getattr(old_settings, prop_name)
+                    if set_value != old_value:
+                        method = getattr(element, 'set_' + prop_name)
+                        method(set_value)
+        # Record the new current state
+        self._anidata = anim
 
-#
-# View creation factory
-#
-_device_and_view_classes = {
-    'PulseLatch': PulseLatchView
-}
+    def input(self, device, seq_time, signal):
+        # Hook from device input method 'input' .
+        if signal.state != 0:
+            # Start a capture animation.
+            self.animate = 'capture'
+            self.anim_start = seq_time
+            self.anim_duration = self.dev._t_d2c
+            self.anim_end = self.anim_start + self.anim_duration
+            self.value_text.set_text(str(signal.state))
+            self.value_text.set_fontstyle('italic')
+            self.value_text.set_fontweight('bold')
+            self.value_text.set_y(self.upper_y)
 
-def device_view(device, *args, **kwargs):
-    return _device_and_view_classes[device.__class__.__name__](
-        device, *args, **kwargs)
-
+    def clr(self, device, seq_time, signal):
+        # Hook from device input method 'clr' .
+        self.value_text = self.value_text
+        # Start a clear-content animation.
+        self.animate = 'clear'
+        self.anim_start = seq_time
+        self.anim_duration = self.dev._t_d2c
+        self.anim_end = seq_time + self.anim_duration
+        self.x_wobble_phases = 12 # out+back 3 times in each direction
+        self.x_wobble_phase_time = self.anim_duration / self.x_wobble_phases
+        self.value_text.set_text('--XXX--')
+        self.value_text.set_fontstyle('italic')
+        self.value_text.set_color('red')

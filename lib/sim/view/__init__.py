@@ -33,7 +33,7 @@ class DeviceView(object):
     def enable_draw(self, on=True):
         self._enable_draw = on
 
-    def init(self, matplotlib_axes):
+    def ani_init(self, matplotlib_axes):
         """
         Create a matplotlib drawing of the device.
 
@@ -42,20 +42,28 @@ class DeviceView(object):
         """
         self.ax = matplotlib_axes
 
-    def update(self, seq_time):
+    def ani_updated_state(self, seq_time):
+        """
+        Return a modified animation state for a time point.
+
+        The result can be passed in to ani_apply.
+
+        """
+        return None
+
+
+    def ani_apply_state(self, state):
         """
         Update the device drawing, by changing artist properties.
 
         Called in preparation for an Axes.redraw().
 
         """
-        return self.animate != None
-
+        pass
 
 #
+# Fetch all device types into a dictionary recording the matching view types.
 #
-#
-
 from sim.view.latch_view import PulseLatchView
 _DEVICE_CLASSNAMES_AND_VIEW_CLASSES = {
     'PulseLatch': PulseLatchView
@@ -124,7 +132,7 @@ def viz(views, from_seqtime=0.0, until_seqtime=None,
 
     for view in views:
         view.enable_draw(True)
-        view.init(ax)
+        view.ani_init(ax)
 
     plt.autoscale()
 
@@ -140,7 +148,10 @@ def viz(views, from_seqtime=0.0, until_seqtime=None,
         active_actions = False
         for view in views:
             # Update all views before redraw
-            active_actions |= bool(view.update(seq_time))
+            anidata = view.ani_updated_state(seq_time)
+            if anidata is not None:
+                view.ani_apply_state(anidata)
+                active_actions = True
         plt.draw()
         actual_time = time_now()
         pause_seconds = (next_actual_time - actual_time).total_seconds()
