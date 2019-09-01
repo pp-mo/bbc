@@ -1,4 +1,5 @@
 """Resources for making animation views of sim.device.Device objects."""
+from __future__ import print_function
 from datetime import datetime, timedelta
 import six
 
@@ -134,7 +135,7 @@ def viz(views, from_seqtime=0.0, until_seqtime=None,
         next_actual_time = (
             actual_start_time +
             timedelta(seconds=seqtime_relative + frame_interval_secs))
-        print('SIM-TIME : {:07.3f}'.format(seq_time))
+        print('\rSIM-TIME : {:8.3f}    | '.format(seq_time), end='')
         seq.run(seq_time)
         active_actions = False
         for view in views:
@@ -151,7 +152,7 @@ def viz(views, from_seqtime=0.0, until_seqtime=None,
                 break  # Nothing more due to happen : Finished.
             if pause_in_gaps:
                 # Wait for a key entry.
-                print('  >> pause for key >> ')
+                print('\n  >> pause for key >> \n')
                 raw_input()
                 # Skip forward to next actual event.
                 seq_time = seq.events[0].time

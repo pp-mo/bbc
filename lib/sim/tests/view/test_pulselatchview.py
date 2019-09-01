@@ -40,7 +40,9 @@ def runtest():
         value_text_kwargs={'fontsize':60})
 
     scene = [latchview]
-    ax = viz(scene, until_seqtime=350.0, speedup_factor=12.0, frame_interval_secs=0.05)
+    ax = viz(scene, until_seqtime=350.0,
+             speedup_factor=10.0, frame_interval_secs=0.05,
+             pause_in_gaps=True)
 
     print('\n\nRETURN TO EXIT...>')
     six.moves.input()
