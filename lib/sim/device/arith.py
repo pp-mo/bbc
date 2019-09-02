@@ -1,9 +1,9 @@
 # Accumulator and adder arithmetic
 
-from sim.signal import SIG_UNDEF
+from sim.signal import SIG_UNDEF, Signal
 from sim.device import okeq, okin
 from sim.device import Device, Action
-
+from sim.device.pseudo_devices import sig_join, sig_bitslice, SigSendCopy
 
 class CounterOnebit(Device):
     """
@@ -79,10 +79,10 @@ class CounterOnebit(Device):
 
     @Device.input
     def input(self, time, signal):
-        okin(self._state, ['idle', 'idle-with-clearing'])
         if signal.state == 0:
             # Ignore, in this case
             return
+        okin(self._state, ['idle', 'idle-with-clearing'])
         self.output.set(time, SIG_UNDEF)
         if self._state == 'idle':
             self._state = 'value-toggling'
@@ -153,6 +153,7 @@ class CounterOnebit(Device):
         self.act(time + self._t_clear, '_control_changed')
         if clear_value and self._value:
             # Also have a stored '1' to drop.
+            self._value = 0
             self.output.set(time, SIG_UNDEF)
             self.act(time + self._t_drop, '_dropped')
 
@@ -188,3 +189,74 @@ class CounterOnebit(Device):
         self.output.set(time, 0)
         # Send carry-out.
         self.x_carry_out.set(time, 1)
+
+
+class Counter(Device):
+    """
+    A multi-bit counter.
+
+    This is a compund device, containing inner devices and signals.
+    Inputs: 'input', 'clear'
+    Outputs: 'output', 'x_carry_out'
+
+    """
+    def __init__(self, name, n_bits, onebit_kwargs=None, *args, **kwargs):
+        super(Counter, self).__init__(name, *args, **kwargs)
+        self.n_bits = n_bits
+        if onebit_kwargs is None:
+            onebit_kwargs = {}
+        self._bit_counters = [
+            CounterOnebit('{}__bit:{}'.format(name, i_bit), **onebit_kwargs)
+            for i_bit in range(n_bits)
+        ]
+        # inputs: 'input', 'x_clear'
+        # outputs: 'output', 'x_carry_out'
+        #
+        # Note: internally, 'input' is split into, and 'output' joined from,
+        # a signal for each bit.
+        # The internal one-bits have an 'or_enable', but this is not used.
+        # The clear signal is inverted to avoid dropped bits carrying over.
+        self._output_combined = sig_join(
+            '{}_combined_output',
+            [(bit_counter.output, 1)
+             for bit_counter in self._bit_counters[::-1]])
+        self.output = self._output_combined.output
+        self._carry_constant_signal = Signal('_carry_value', start_state=1)
+        self._carry_gates = [None] * (n_bits - 1)
+        self.add_output('x_carry_out')
+        # Connect input of each bit>0 to a SigSendCopy pseudo-device, connected
+        # to the carry-out of the previous :  Similarly, connect our own
+        # carry-out to the last bit-carry-out.
+        # The SigSendCopy-s are used so we can switch carrying off for out
+        # clear operation.
+        for i_bit in range(n_bits - 1):
+            i_next = i_bit + 1
+            carry_gate = SigSendCopy('_carry:{}'.format(i_bit))
+            self._carry_gates[i_bit] = carry_gate
+            carry_gate.connect('input', self._carry_constant_signal)
+            carry_gate.connect('send', self._bit_counters[i_bit].x_carry_out)
+            if i_bit < n_bits - 1:
+                # NOTE: these inputs get signals from the main 'input' value,
+                # as well as these carry-overs, which is effectively an
+                # implicit OR :  The timings must be kept apart to avoid
+                # unexpected-state exceptions.
+                self._bit_counters[i_next].connect('input', carry_gate.output)
+            else:
+                self.x_carry_out.connect('input', carry_gate.output)
+
+    def input(self, time, signal):
+        # Split input value into bits and send to internal bit counter inputs.
+        dummy_signal = Signal('dummy')
+        for i_bit in range(self.n_bits):
+            value = signal.state & (1 << i_bit)
+            dummy_signal.set(time, value)
+            self._bit_counters[i_bit].input(time, dummy_signal)
+
+    def clear(self, time, signal):
+        # Set the common carry signal to block carry-over while clearing, and
+        # enable it during 'normal' operation.
+        enable_carries = 0 if (signal.state != 0) else 1
+        self._carry_constant_signal.set(time, enable_carries)
+        # Send the clear signal (new value) to all the bit-counters.
+        for i_bit in range(self.n_bits):
+            self._bit_counters[i_bit].clear(time, signal)

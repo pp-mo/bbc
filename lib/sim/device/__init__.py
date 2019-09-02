@@ -71,6 +71,9 @@ class Device(object):
             self.__class__.__name__,
             self.name)
 
+    def reset(self):
+        pass  # Just to ensure we always have one.
+
     def connect(self, input_name, signal):
         input_method = getattr(self, input_name)
         signal.add_connection(input_method)
@@ -83,6 +86,7 @@ class Device(object):
         # self.outputs[name] = signal
 
     def act(self, time, name, *args, **kwargs):
+        # Schedule a future action, calling a method on the device.
         self.seq.add(
             (time, Action(self, name, *args, **kwargs)))
 

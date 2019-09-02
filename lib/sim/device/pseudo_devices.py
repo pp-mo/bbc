@@ -166,7 +166,10 @@ def sig_join(name, sigs_and_bitwidths):
 class SigSendCopy(Device):
     def __init__(self, *args, **kwargs):
         super(SigSendCopy, self).__init__(*args, **kwargs)
-        self.output = self.add_output('output')
+        self.add_output('output')
+        self.reset()
+
+    def reset(self):
         self._state = SIG_UNDEF
 
     @Device.input
@@ -179,5 +182,4 @@ class SigSendCopy(Device):
     @Device.input
     def send(self, time, signal):
         # Trigger an output event
-        self.output.set(self._state)
-
+        self.output.set(time, self._state)

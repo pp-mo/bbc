@@ -8,12 +8,13 @@ from sim.device.latch import PulseLatch
 
 
 class PulseLatchView(DeviceView):
+    target_devicetype = PulseLatch
+
     def __init__(self, device, input_xy, output_xy,
                  min_halfwidth=4.0, min_halfheight=6.0,
                  outline_poly_kwargs=None,
                  value_text_kwargs=None,
                  onebit_mode=False, onebit_circle_kwargs=None):
-        assert isinstance(device, PulseLatch)
         super(PulseLatchView, self).__init__(device)
         self.input_x, self.input_y = input_xy
         self.output_x, self.output_y = output_xy

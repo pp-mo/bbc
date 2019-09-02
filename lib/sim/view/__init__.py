@@ -9,8 +9,11 @@ import matplotlib.pyplot as plt
 time_now = datetime.now
 
 class DeviceView(object):
+    target_devicetype = None  # Set to expected class of wrapped device.
+
     def __init__(self, device, *args, **kwargs):
         self.dev = device
+        assert isinstance(device, self.target_devicetype)
         self.animate = None
 
     def hook_device_calls(self, name_or_names):
