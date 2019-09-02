@@ -175,7 +175,7 @@ class PulseLatchView(DeviceView):
             # Start a capture animation.
             self.animate = 'capture'
             self.anim_start = seq_time
-            self.anim_duration = self.dev._t_d2c
+            self.anim_duration = self.dev._t_delay
             self.anim_end = self.anim_start + self.anim_duration
             self.value_text.set_text(str(signal.state))
             self.value_text.set_fontstyle('italic')
@@ -188,7 +188,7 @@ class PulseLatchView(DeviceView):
         # Start a clear-content animation.
         self.animate = 'clear'
         self.anim_start = seq_time
-        self.anim_duration = self.dev._t_d2c
+        self.anim_duration = self.dev._t_delay
         self.anim_end = seq_time + self.anim_duration
         self.x_wobble_phases = 12 # out+back 3 times in each direction
         self.x_wobble_phase_time = self.anim_duration / self.x_wobble_phases

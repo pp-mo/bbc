@@ -61,38 +61,20 @@ class DeviceView(object):
         """
         pass
 
-#
-# Fetch all device types into a dictionary recording the matching view types.
-#
-from sim.view.latch_view import PulseLatchView
-_DEVICE_CLASSNAMES_AND_VIEW_CLASSES = {
-    'PulseLatch': PulseLatchView
-}
-
-def device_view(device, *args, **kwargs):
-    """
-    A factory method for creating a DeviceView for a device.
-
-    Returns an object of the appropriate linked DeviceView class in each case,
-    passing all additional arguments to that.
-
-    """
-    return _DEVICE_CLASSNAMES_AND_VIEW_CLASSES[device.__class__.__name__](
-        device, *args, **kwargs)
-
 
 #
 # Key routine to perform animation.
 #
 def viz(views, from_seqtime=0.0, until_seqtime=None,
         axes=None,
-        frame_interval_secs=0.2, speedup_factor=1.0, pause_in_gaps=False):
+        frame_interval_secs=0.2, speedup_factor=1.0,
+        pause_in_gaps=False, skip_gaps=False, pause_every_step=False):
     """
     The key visual animation routine.
 
     Args:
 
-    * scene (list of DeviceView objects):
+    * views (list of DeviceView objects):
         The device viewers to be animated.
     * from_seqtime (float):
         The sequencer time to run the sequencer to before starting animation.
@@ -109,6 +91,11 @@ def viz(views, from_seqtime=0.0, until_seqtime=None,
         If set, pause on keypress when all view.update()s are idle, then skip
         ahead immediately to the next sequencer event.
         # ?? to the start of the next animation ??
+    * pause_each_timstep (bool):
+        Pause for keypress at every update.
+    * skip_gaps (bool):
+        If set, jump over gaps when all is idle.
+        Like 'pause_in_gaps' but with no pause for input.
 
     Returns:
         The 'axes' used, which was created if not passed in.
@@ -143,7 +130,8 @@ def viz(views, from_seqtime=0.0, until_seqtime=None,
         next_actual_time = (
             actual_start_time +
             timedelta(seconds=seqtime_relative + frame_interval_secs))
-        print('\rSIM-TIME : {:8.3f}    | '.format(seq_time), end='')
+        # print('\rSIM-TIME : {:8.3f}    | '.format(seq_time), end='')
+        print('SIM-TIME : {:8.3f}    | '.format(seq_time))
         seq.run(seq_time)
         active_actions = False
         for view in views:
@@ -157,14 +145,19 @@ def viz(views, from_seqtime=0.0, until_seqtime=None,
         pause_seconds = (next_actual_time - actual_time).total_seconds()
         pause_seconds = max(pause_seconds, 0.1 * frame_interval_secs)
         plt.pause(pause_seconds)
+        if active_actions and pause_every_step:
+            # Wait for a key entry (but not if gap is coming)
+            print('\n >>STEP>> pause for key.. \n')
+            raw_input()
         if not active_actions:
             # No active visible changes.
             if len(seq.events) == 0:
                 break  # Nothing more due to happen : Finished.
-            if pause_in_gaps:
-                # Wait for a key entry.
-                print('\n  >> pause for key >> \n')
-                raw_input()
+            if pause_in_gaps or pause_every_step or skip_gaps:
+                if pause_in_gaps or pause_every_step:
+                    # Wait for a key entry.
+                    print('\n >>GAP>> pause for key.. \n')
+                    raw_input()
                 # Skip forward to next actual event.
                 seq_time = seq.events[0].time
                 # Reset start-points of both seq and real times.

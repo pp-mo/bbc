@@ -20,7 +20,7 @@ class PulseLatch(Device):
                  name,
                  t_data_2_clr=1,
                  t_clr_2_data=1,
-                 t_out_delay=10,
+                 t_out_delay=5,
                  *args, **kwargs):
         super(PulseLatch, self).__init__(
             name, *args, **kwargs)
