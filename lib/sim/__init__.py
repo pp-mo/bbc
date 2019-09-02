@@ -12,10 +12,10 @@ class SlotsHolder(object):
     Like a dictionary with fixed keys, but with the syntax convenience of
     property (dot) access instead of indexing,
     e.g. "myobj.myprop" rather than "myobj['myprop']".
-    Or like a namedtuple, but mutable.
+    Or... like a namedtuple, but mutable.
 
     Create a subclass with SlotsHolder.newtype(classname, slotnames).
-    Implements printable forms (str + repr), copying (deepcopy) and comparison.
+    Implements printable forms (str + repr); copying (deepcopy) and comparison.
 
     """
     def __init__(self, *args, **kwargs):
