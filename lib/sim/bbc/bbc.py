@@ -16,7 +16,7 @@ from sim.device.latch import PulseLatch
 # FUTURE devices (for full design) ...
 # from sim.device.select_direct import Selector, Director
 # from sim.device.orgate import PulseOr
-# from sim.device.arith import BitAccumulator, BitCounter
+from sim.device.arith import Counter
 from sim.device.pseudo_devices import \
     sig_join, sig_bitslice, SigSendCopy
         # NOTE: sender produces a triggered event from a state output
@@ -57,17 +57,16 @@ pm_k = PulseRom(
     'pm_k',
     instruction_k_values)
 
-
-count_pm_addr = BitCounter('pm_addr', bits=6)
-# in: addend
-# out: output, carry_out
+count_pm_addr = Counter('pm_addr', n_bits=6)
+# in: 'input'
+# out: 'output', 'x_carry_out'
 
 # Connect the 'next' signal : it needs to be converted to a '1' for a multibit counter input.
 ir_plus_1 = SigSendCopy(name='ir+1')
-ir_plus_1.input.set(0.0, 1)
+ir_plus_1.input(0.0, Signal('_tmp', start_state=1))
 ir_plus_1.connect('send', cycle.p0_Next)
 # TODO: this signal will need to be OR-ed with k value (for jumps) and carry-out (for skips)
-count_pm_addr.connect('addend', ir_plus_1.output)
+count_pm_addr.connect('input', ir_plus_1.output)
 
 # Wire address and timing signals to all 3 PM roms
 for pm in (pm_mnemonics, pm_ir, pm_k):
@@ -80,9 +79,9 @@ pm_ir.connect('x_read', cycle.p2_PmFetchIr)
 pm_k.connect('x_read', cycle.p3_PmFetchK_Clc)
 
 # Split off top bit of instruction for immediate signal to preclear acc
-ctrl_x_cla = sig_bitslice(pm_ir.output, 7, name='!cla')
+ctrl_x_cla = sig_bitslice(pm_ir.out, 7, name='!cla')
 # Rest goes to IR : these ones are all latched
-ir_lower7 = sig_bitslice(pm_ir.output, 0, nbits=7)  # NB automatic naming
+ir_lower7 = sig_bitslice(pm_ir.out, 0, nbits=7)  # NB automatic naming
 ir = PulseLatch('ir')
 ir.connect('input', ir_lower7.output)
 
