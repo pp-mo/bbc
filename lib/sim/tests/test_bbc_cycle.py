@@ -15,3 +15,4 @@ for phase_name, _ in cycle.phase_names_and_default_durations:
     getattr(cycle, phase_name).trace()
 SEQ.add(setsig(0.0, sig_start, '!'))
 SEQ.run(100.0)
+SEQ.clear()  # Clear out unfinished business, so other tests can run!

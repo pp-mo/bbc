@@ -2,6 +2,7 @@
 from __future__ import print_function
 from datetime import datetime, timedelta
 import six
+import six.moves
 
 import matplotlib.pyplot as plt
 
@@ -151,7 +152,7 @@ def viz(views, from_seqtime=0.0, until_seqtime=None,
         if active_actions and pause_every_step:
             # Wait for a key entry (but not if gap is coming)
             print('\n >>STEP>> pause for key.. \n')
-            raw_input()
+            six.moves.input()
         if not active_actions:
             # No active visible changes.
             if len(seq.events) == 0:
@@ -160,7 +161,7 @@ def viz(views, from_seqtime=0.0, until_seqtime=None,
                 if pause_in_gaps or pause_every_step:
                     # Wait for a key entry.
                     print('\n >>GAP>> pause for key.. \n')
-                    raw_input()
+                    six.moves.input()
                 # Skip forward to next actual event.
                 seq_time = seq.events[0].time
                 # Reset start-points of both seq and real times.

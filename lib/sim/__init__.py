@@ -2,6 +2,8 @@
 import copy
 from collections import namedtuple, OrderedDict
 
+from six import iteritems
+
 #
 # TODO: belongs in separate 'utils' submodule
 #
@@ -26,7 +28,7 @@ class SlotsHolder(object):
             else:
                 val = None
             setattr(self, key, val)
-        for key, val in kwargs.iteritems():
+        for key, val in iteritems(kwargs):
             # keywords overwrite
             setattr(self, key, val)
 
@@ -46,7 +48,7 @@ class SlotsHolder(object):
     def __str__(self):
         selfdict = self.as_odict()
         datamsg = ', '.join(['{!s}={!r}'.format(key, val)
-                             for key, val in selfdict.iteritems()])
+                             for key, val in iteritems(selfdict)])
         msg = '{!s}({!s})'.format(self.__class__.__name__, datamsg)
         return msg
 
