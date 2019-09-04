@@ -217,23 +217,31 @@ class Counter(Device):
         # The internal one-bits have an 'or_enable', but this is not used.
         # The clear signal is inverted to avoid dropped bits carrying over.
         self._output_combined = sig_join(
-            '{}_combined_output',
+            '{}_combined_output'.format(name),
             [(bit_counter.output, 1)
              for bit_counter in self._bit_counters[::-1]])
         self.output = self._output_combined.output
         self._carry_constant_signal = Signal('_carry_value', start_state=1)
-        self._carry_gates = [None] * (n_bits - 1)
-        self.add_output('x_carry_out')
+        self._carry_gates = [None] * n_bits
+        # self.add_output('x_carry_out')
+
         # Connect input of each bit>0 to a SigSendCopy pseudo-device, connected
         # to the carry-out of the previous :  Similarly, connect our own
         # carry-out to the last bit-carry-out.
-        # The SigSendCopy-s are used so we can switch carrying off for out
-        # clear operation.
-        for i_bit in range(n_bits - 1):
+        # The (SigSendCopy) "carry-gates" are used so we can switch carrying
+        # off during clear operations.
+        for i_bit in range(n_bits):
             i_next = i_bit + 1
-            carry_gate = SigSendCopy('_carry:{}'.format(i_bit))
+            if i_bit < n_bits - 1:
+                carry_name = '_{}_carry:{}'.format(name, i_bit)
+            else:
+                carry_name = '{}__x_carry_out'.format(name)
+            carry_gate = SigSendCopy(carry_name)
             self._carry_gates[i_bit] = carry_gate
             carry_gate.connect('input', self._carry_constant_signal)
+            # Note carry-gates ALSO need an initial signal to initialise state.
+            # TODO: possibly should fix this by overriding SendSigCopy.connect?
+            carry_gate.input(0.0, self._carry_constant_signal)
             carry_gate.connect('send', self._bit_counters[i_bit].x_carry_out)
             if i_bit < n_bits - 1:
                 # NOTE: these inputs get signals from the main 'input' value,
@@ -242,7 +250,7 @@ class Counter(Device):
                 # unexpected-state exceptions.
                 self._bit_counters[i_next].connect('input', carry_gate.output)
             else:
-                self.x_carry_out.connect('input', carry_gate.output)
+                self.x_carry_out = carry_gate.output
 
     def input(self, time, signal):
         # Split input value into bits and send to internal bit counter inputs.

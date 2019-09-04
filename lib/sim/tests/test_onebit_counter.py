@@ -27,6 +27,15 @@ clr.trace()
 counter.output.trace()
 counter.x_carry_out.trace()
 
+
+COUNTER_CARRYOUTS_COUNT = 0
+
+def carry_out_callback(time, signal):
+    global COUNTER_CARRYOUTS_COUNT
+    COUNTER_CARRYOUTS_COUNT += 1
+
+counter.x_carry_out.add_connection(carry_out_callback)
+
 SEQ.addall([
     setsig(100.0, din, 1),
     setsig(110.0, din, 1),
@@ -41,8 +50,29 @@ SEQ.addall([
     setsig(220.0, din, 1),
     setsig(223.0, clr, 0),
 ])
+
+okeq(counter.output.state, 0)
+okeq(COUNTER_CARRYOUTS_COUNT, 0)
+
+SEQ.run(101.)
+okeq(counter.output.state, SIG_UNDEF)
+okeq(COUNTER_CARRYOUTS_COUNT, 0)
+
+SEQ.run(109.)
+okeq(counter.output.state, 1)
+okeq(COUNTER_CARRYOUTS_COUNT, 0)
+
+SEQ.run(111.)
+okeq(counter.output.state, SIG_UNDEF)
+okeq(COUNTER_CARRYOUTS_COUNT, 0)
+
+SEQ.run(119.)
+okeq(counter.output.state, 0)
+okeq(COUNTER_CARRYOUTS_COUNT, 1)
+
 SEQ.run()
 
+# Check we get an error when clear active period is too short.
 SEQ.addall([
     setsig(250.0, clr, 1),
     setsig(251.0, clr, 0)
