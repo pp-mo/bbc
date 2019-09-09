@@ -56,14 +56,51 @@ class DeviceView(object):
         return None
 
 
-    def ani_apply_state(self, state):
+    @staticmethod
+    def _get_element_state(element, AniDataType):
+        # 'element' is a visible matplotlib graphics object.
+        # AniDataType is a SlotsHolder whose slot_names are the names of the
+        # element attributes we want to adjust during an animation.
+        # ( NOTE: which *must* all have 'get_' and 'set_' methods )
+        # We return an 'AniDataType' filled with the current settings.
+        result = AniDataType()
+        for propname in AniDataType.slot_names:
+            get_method = getattr(element, 'get_' + propname)
+            value = get_method()
+            setattr(result, propname, value)
+        return result
+
+    def ani_apply_state(self, anim):
         """
         Update the device drawing, by changing artist properties.
 
         Called in preparation for an Axes.redraw().
+        The operation works in conjunction with the stored current state,
+        self._anidata, to transition into any given state on request.
+        This allows us to rewind to / replay from any point in an animation.
 
         """
-        pass
+        # anim is a specific SlotsHolder subclass, where :
+        #   anim[element_name] --> graphics_element
+        #       - and getattr(self, slot) is a graphical element
+        # each graphics_element is a SlotsHolder subclass, where :
+        #   element[property_name] --> property_value
+        #       - and getattr(element, 'set_' + property_name) is a method
+        for element_name in anim.slot_names:
+            element = getattr(self, element_name)  # A graphics component
+            new_settings = getattr(anim, element_name)  # Its required state
+            old_settings = getattr(self._anidata, element_name)
+                # Its current state (as we have it recorded)
+            if new_settings != old_settings:
+                for prop_name in new_settings.slot_names:
+                    set_value = getattr(new_settings, prop_name)
+                    old_value = getattr(old_settings, prop_name)
+                    if set_value != old_value:
+                        method = getattr(element, 'set_' + prop_name)
+                        method(set_value)
+        # Record the new current state
+        self._anidata = anim
+
 
 
 #

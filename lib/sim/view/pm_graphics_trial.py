@@ -3,43 +3,19 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.patches as mpat
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcol
 
-#
-# OLD: stuff relating to drawing a address-distributor array
-#
-# top_inlet_height=3.,
-# btm_control_height=6.,
-# control_width=4.,
-# # controls are: sel, cancel, read
-# # shown at bottom, colour coded with flash ?
-# control_colours_base={'select': 'brown',
-#                       'cancel': 'blue',
-#                       'read': 'red'}):
-# address selection area width
-# each-bit, w:n = 0:0, 1:1, 2:1.5, 3:2, 4:2.5 etc ?
-# ~ 0.5*(n + 1) ##except 0:0.5
-# all-bits, w:n = 0:0, 1:1, 2:2.5, 3:4.5, 4:7
-# ~ sum{1,n: 0.5*(n+1)} = 0.5 * n*0.5*(2 + (n+1))
-# ~ 0.25 * n(n + 3)
-# ~ 0.75*n + 0.25*n^2
-# 0:0, 1:1, 2:2.5, 3:
-# w_addr = 0.25 * n_addr_bits * (n_addr_bits + 3)
-#    # making upper rows proportionally wider
-#     n_rows = 2 ** n_addr_bits
-#     w_addrs = np.arange(0, n_addr_bits + 1, dtype=float)
-#     w_addrs = 0.25 * w_addrs * (w_addrs + 3)
-
-
-# x_addrs = x_lhs_main - w_addrs  # 0-->x, 1-->(x-w1), n-->(x - w1 - ... wN)
 
 def pm_array_drawing_points(
-        x_lhs_rom, y_btm_rom,
+        x_left=0., y_bottom=0.,
         row_height=0.5, col_width=1.,
         n_addr_bits=4, n_word_bits=8,  # N.B. could come from the device
-        # cell_slant_right=True,  # TODO: remove this when plotting rows
         cell_slant_tangent=0.42,  # about 30 degrees
         ):
-
+    """
+    Calculate point locations of inner (hexagon) and outer (rhombus) polygons
+    for an ideal PM cell.
+    """
     # work out cell coordinates
     cell_y_scale = row_height / col_width
 
@@ -93,34 +69,129 @@ def pm_array_drawing_points(
         # Target: (outers/inners)[n_words, n_word_bits, (n_outer/n_inner), 2)
         all_outers = np.zeros((n_words, n_word_bits, n_outer, 2))
         all_inners = np.zeros((n_words, n_word_bits, n_inner, 2))
+
         row_offsets = (row_height * np.arange(n_words)).reshape(
             (n_words, 1, 1, 1))
         col_offsets = (col_width * np.arange(n_word_bits)).reshape(
             (1, n_word_bits, 1, 1))
 
-        all_outers = all_outers + row_offsets + col_offsets
-        all_inners = all_inners + row_offsets + col_offsets
-        all_outers[::2, :, :, :] += cell_outer_rhs
-        all_outers[1::2, :, :, :] += cell_outer_lhs
-        all_inners[::2, :, :, :] += cell_inner_rhs
-        all_inners[1::2, :, :, :] += cell_inner_lhs
+        for arr in (all_outers, all_inners):
+            arr[..., 0:1] += col_offsets
+            arr[..., 1:2] += row_offsets
+
+        # The odd rows, which lean left, need shifting right to join up.
+        x_stagger = cell_outer_rhs[-1, 0] - cell_outer_rhs[0, 0]  # X(end-start)
+        all_outers[1::2, ..., 0] += x_stagger
+        all_inners[1::2, ..., 0] += x_stagger
+
+        # Add the bottom-left location offset to all points.
+        for points in all_outers, all_inners:
+            points[..., 0] += x_left
+            points[..., 1] += y_bottom
+
+        # Add the relevant polygon point locations to all points.
+        all_outers[::2, ...] += cell_outer_rhs
+        all_outers[1::2, ...] += cell_outer_lhs
+        all_inners[::2, ...] += cell_inner_rhs
+        all_inners[1::2, ...] += cell_inner_lhs
+
         return all_outers, all_inners
 
     return all_cells_outers_inners()
 
+def pm_array_graphics(cell_points_outers_inners, axes=None):
+    # Create and return graphical elements for the PM, from given path points.
+    outers_points, inners_points = cell_points_outers_inners
+
+    if axes is None:
+        axes = plt.axes()
+
+    # Extract dimensions of the arrays
+    n_words, n_word_bits, n_outers = outers_points.shape[:3]
+    assert inners_points[:,:,0,:].shape == outers_points[:,:,0,:].shape
+    n_inners = inners_points.shape[2]
+
+    # Construct element control (settings) types.
+    cell_inner_color = mcol.hex2color('#c0f8ff')
+    hole_inner_color_0 = mcol.hex2color('#f8fcff')
+    hole_inner_color_1 = mcol.hex2color('#c0a090')
+    data = np.random.uniform(size=(n_words, n_word_bits))
+    data = (data > 0.7).astype(bool)
+    elements = {}
+    for i_row in range(n_words):
+        for i_col in range(n_word_bits):
+            # cell_inner_color = (float(i_row) / n_words, float(i_col) / n_word_bits, 0.0)
+            cell_name = 'cell_{:03d}_{:03d}'.format(i_row, i_col)
+
+            outer_name = 'outerpoly__{}'.format(cell_name)
+            outerpoly = mpat.Polygon(
+                outers_points[i_row, i_col],
+                closed=True, edgecolor='black', linewidth=1.5,
+                facecolor=cell_inner_color, zorder=2)
+            elements[outer_name] = outerpoly
+
+            inner_name = 'innerpoly__{}'.format(cell_name)
+            bit_color = (hole_inner_color_1
+                         if data[i_row, i_col]
+                         else hole_inner_color_0)
+            innerpoly = mpat.Polygon(
+                inners_points[i_row, i_col],
+                closed=True, edgecolor='black', linewidth=1.5,
+                facecolor=bit_color, zorder=4)
+            elements[inner_name] = innerpoly
+
+            for el in (outerpoly, innerpoly):
+                axes.add_patch(el)
+
+    return elements
+
+
+def adjust_row(elements, i_row, y_stretch=1.4, linewidth=2.5, zorder_inc=10):
+    cell_row_name = 'cell_{:03d}'.format(i_row)
+    for el_name, poly in elements.items():
+        if cell_row_name in el_name:
+            pts = poly.get_xy()
+            base_y = pts[0, 1]
+            pts[..., 1] = base_y + y_stretch * (pts[..., 1] - base_y)
+            poly.set_linewidth(linewidth)
+            z = poly.get_zorder()
+            poly.set_zorder(z + zorder_inc)
 
 if __name__ == '__main__':
-    # def plt_one(slant_right):
-    #     outer, inner = pm_array_drawing_points(0., 0., cell_slant_right=slant_right)
-    #     border = mpat.Polygon(outer, closed=True, edgecolor='red', facecolor=None)
-    #     hole = mpat.Polygon(inner, closed=True, edgecolor='black', facecolor='green')
-    #     ax = plt.axes()
-    #     ax.add_patch(border)
-    #     ax.add_patch(hole)
-    #     ax.autoscale()
-    #     plt.show()
-    #
-    # for slant_right in (True, False):
-    #     plt_one(slant_right)
-    outers, inners = pm_array_drawing_points(0., 0.)
-    print outers
+    outers_inners = pm_array_drawing_points(n_addr_bits=6)
+    plt.figure(figsize=(16,10))
+    ax = plt.axes()
+    elems = pm_array_graphics(outers_inners, axes=ax)
+    n_rows = outers_inners[0].shape[0]
+    # ax.autoscale()
+    # x0, x1 = ax.get_xlim()
+    # dx = (x1 - x0) * 0.1
+    # ax.set_xlim((x0-dx, x1+dx))
+    # y0, y1 = ax.get_ylim()
+    # dy = (y1 - y0) * 0.1
+    # ax.set_ylim((y0-dy, y1+dy))
+    ax.set_xlim(-12, 24)
+    ax.set_ylim(-2, 34)
+
+    plt.pause(0.03)
+
+    for i_try in range(10):
+        i_row_select = int(np.round(np.random.uniform(0, n_rows + 1)))
+    # for i_row_select in range(n_rows):
+        fracts = np.linspace(1.0, 1.6, 10)
+        fracts = np.concatenate([fracts, fracts[::-1]])
+        for fract in fracts:
+            # tweak row UP then DOWN
+            adjust_row(elements=elems, i_row=i_row_select,
+                       y_stretch=fract,
+                       linewidth=3.5, zorder_inc=10)
+            plt.pause(0.03)
+            # "untweak"
+            # N.B. don't need to revert every time, but this is simple
+            adjust_row(elements=elems, i_row=i_row_select,
+                       y_stretch=1.0/fract,
+                       linewidth=1.5, zorder_inc=-10)
+
+    print('!!DONE!!')
+    plt.pause(0.01)
+    plt.show()

@@ -35,20 +35,6 @@ class PulseLatchView(DeviceView):
         self.hook_device_calls(('input', 'clr'))
         self.value_text_unset = '---'
 
-    @staticmethod
-    def _get_element_state(element, AniDataType):
-        # 'element' is a visible matplotlib graphics object.
-        # AniDataType is a SlotsHolder whose slot_names are the names of the
-        # element attributes we want to adjust during an animation.
-        # ( NOTE: which *must* all have 'get_' and 'set_' methods )
-        # We return an 'AniDataType' filled with the current settings.
-        result = AniDataType()
-        for propname in AniDataType.slot_names:
-            get_method = getattr(element, 'get_' + propname)
-            value = get_method()
-            setattr(result, propname, value)
-        return result
-
     def ani_init(self, axes):
         self.ax = axes
         self.centre_x = 0.5 * (self.input_x + self.output_x)
@@ -152,23 +138,6 @@ class PulseLatchView(DeviceView):
                 self.animate = None
 
         return anim if work_todo else None
-
-    def ani_apply_state(self, anim):
-        # This looks like *standard* implementation ?
-        for element_name in anim.slot_names:
-            element = getattr(self, element_name)  # A graphics component
-            new_settings = getattr(anim, element_name)  # Its required state
-            old_settings = getattr(self._anidata, element_name)
-                # Its current state (as we have it recorded)
-            if new_settings != old_settings:
-                for prop_name in new_settings.slot_names:
-                    set_value = getattr(new_settings, prop_name)
-                    old_value = getattr(old_settings, prop_name)
-                    if set_value != old_value:
-                        method = getattr(element, 'set_' + prop_name)
-                        method(set_value)
-        # Record the new current state
-        self._anidata = anim
 
     def input(self, device, seq_time, signal):
         # Hook from device input method 'input' .
