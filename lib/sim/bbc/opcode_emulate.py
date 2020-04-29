@@ -1,8 +1,8 @@
 from collections import namedtuple
 
-from sim.bbc.code import INSTRUCTION_CODE_REGISTERS as OPS
+from sim.bbc.code import INSTRUCTION_CODE_REGISTERS as _ALLOPS
 
-_VALID_OPCODES = OPS.keys()
+_VALID_OPCODES = _ALLOPS.keys()
 
 CpuState = namedtuple('CpuState', ('ram', 'ir', 'acc', 'carry'))
 
@@ -10,34 +10,31 @@ def emulate_opcode(codename, k, cpustate):
     """
     Emulate one opcode.
 
-    Accepts and returns a cpustate.
+    Accepts and returns a CpuState.
 
     """
-    # Take a deep copy.
-    cpustate = CpuState(cpustate.ram[:],
-                        cpustate.ir, cpustate.acc, cpustate.carry)
-
     if codename.upper() not in _VALID_OPCODES:
         raise ValueError('Opcode "{}" not known.'.format(codename))
 
+    # Get the input data (including cpustate) in the forms that we want it.
     codename = codename.lower()
     k = (k + 512) % 256
-    n_ram = len(cpustate.ram)
+    ram = cpustate.ram[:]  # N.B. must copy this !
+    ir = cpustate.ir
+    ir_next = (ir + 1) % 256
+    acc = cpustate.acc
+    carry = cpustate.carry
+    n_ram = len(ram)
 
     def check_k_is_valid_addr():
         if k < 0 or k >= n_ram:
             msg = 'Opcode {} @{:03d} : k={} outside size of ram, {}'
-            raise ValueError(msg.format(codename, cpustate.ir, k, n_ram))
+            raise ValueError(msg.format(codename, ir, k, n_ram))
 
     assert len(codename) == 3
-    memop = codename[2] == 'm'
-    if memop:
+    opcode_is_memory_op = codename[2] == 'm'
+    if opcode_is_memory_op:
         check_k_is_valid_addr()
-
-    ir_next = (cpustate.ir + 1) % 256
-    ram = cpustate.ram[:]  # N.B. a copy !
-    acc = cpustate.acc
-    carry = cpustate.carry
 
     if codename == 'stm':
         ram[k] = acc
@@ -68,13 +65,13 @@ def emulate_opcode(codename, k, cpustate):
     elif codename == 'jmp':
         ir_next = ir_next + k
 
-    is_arith = codename in ('adm', 'acm', 'adi', 'aci')
-    if is_arith:
+    opcode_is_arithmetic = codename in ('adm', 'acm', 'adi', 'aci')
+    if opcode_is_arithmetic:
         acc = (acc + 1024) % 512
         carry = 1 if acc >= 256 else 0
 
     acc = acc % 256
     ir_next = ir_next % 256
-    cpustate = CpuState(ram=ram, ir=ir_next, acc=acc, carry=carry)
-    return cpustate
+    new_cpustate = CpuState(ram=ram, ir=ir_next, acc=acc, carry=carry)
+    return new_cpustate
 
