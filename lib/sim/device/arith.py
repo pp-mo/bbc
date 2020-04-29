@@ -195,7 +195,7 @@ class Counter(Device):
     """
     A multi-bit counter.
 
-    This is a compund device, containing inner devices and signals.
+    This is a compound device, containing inner devices and signals.
     Inputs: 'input', 'clear'
     Outputs: 'output', 'x_carry_out'
 

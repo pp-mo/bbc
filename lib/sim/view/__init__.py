@@ -132,7 +132,7 @@ def viz(views, from_seqtime=0.0, until_seqtime=None,
         If set, pause on keypress when all view.update()s are idle, then skip
         ahead immediately to the next sequencer event.
         # ?? to the start of the next animation ??
-    * pause_each_timstep (bool):
+    * pause_every_step (bool):
         Pause for keypress at every update.
     * skip_gaps (bool):
         If set, jump over gaps when all is idle.
