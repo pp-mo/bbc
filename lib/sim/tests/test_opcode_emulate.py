@@ -1,5 +1,5 @@
 from sim.bbc.opcode_emulate import CpuState, emulate_opcode
-
+from six.moves import input
 
 # Hailstone numbers calculation
 
