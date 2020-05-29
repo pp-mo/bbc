@@ -1,0 +1,86 @@
+As compared to 'full' 8-bit instruction plan,
+    - no immediate load : all load values from DM
+        - thus, lower instruction work "K" *always* sent to M (DM address)
+            .. rather than A
+            .. *EXCEPT* for jumps, where K --> P (PM address)
+    - no logical operations (OR/XOR) : all operations are arithmetic (ADD)
+    - BUT we do still support optional carry-over
+        - which includes SKC (test) operation
+    - no  pre-clear of A
+        - can clear A (only) by sending to DM
+        - therefore also *NO DIRECT LOAD*, must manually clear A first
+
+Bits:
+    I3 : a2m : save/~load  : m2a/a2m switching; enable final drop of A --> DM[M]
+    I2 : jmp : jump/add : add K to P, instead of sending to M
+            - *ALSO* switches adc output to M instead of A
+    I1 : clc : copy CY to CYC and clear CY.  Immediate at instruction load
+    I0 : adc : add CYC to A or P.  Enabled in end-phase of cycle
+
+Cycle:
+    1
+        - release DM[P]  (=complete write)
+        - clear M
+        - clear IR
+        - address PM[P]
+
+    2
+        - fetch PM.hi[P] --> IR
+            : IR3.a2m, IR2.jmp and IR0.adc are latched for later function
+            : IR1.clc immediately clears CY to CYC
+
+    3
+        - fetch PM.lo[P] --> P [if IR2.jmp else] M
+
+    4
+        - address/fetch DM[M] --> A [if ~IR3.a2m else] <none>
+            - (( also recycle *unless* IR3.a2m ))
+        - increment P  ((here to be separate from adc for skc, = next phase))
+
+    5
+        - clear CYC --> [if IR0.adc] add to ( P [if IR2.jmp else] M )
+        - [if IR3.a2m] clear A --> DM[M]  ((here =*after* M-fetch))
+        - release PM[P]  ((late so selected-PM visible for "most" of cycle))
+
+
+Notes:
+    1. *always* address (i.e. fetch) DM[M]
+        - UNLESS a2M, we also re-cycle it.
+        - if IR2.jmp, K-->P instead of M, so M is 0
+    2. DM[0] could be hardwired to be *always* a '0'
+        - this means it can be ref'd by non-memory instructions (jmp+skc)
+        - also can be used as target-store address to clear A, i.e. STM 0 == CLA
+    3. CYC must always be cleared by end of instruction.
+        - phase5, when adc would operate
+        - if not IR0.adc, this is "lost", else --> P or M, depending IR2.jmp
+    4. there is no LDM
+        - You must clear M first
+        - there is no CLM (!)
+        - you must write it to dummy-M (??can be 0)
+
+??POSSIBLE 4-phase approach??
+4 must be minimum, as PM requires  : select, fetch-i, fetch-k, deselect ..
+other aspects :
+    IR clear
+    P increment
+    DM operation (including DM address+select, de-select, clear-M)
+    M2A addition
+    A2M sends  -- can assume does NOT coincide with M2A fetch OR carries
+    carry operation
+in the above, the IR usage appears to be prohibitive:
+    phase-5 is used for carry, which MAY combine with M2A fetch+add
+    that means that clear-IR cannot occur here,
+        must wait until above phase-1, when also address-PM
+    then phase-2 fetches IR, so IR is valid from here
+    I.E. IR must persist from phase2 to phase5
+
+
+Effective Instruction Set:
+    I3,2,1,0 = a2m, jmp, clc, adc
+
+    ADM 0010 <M>
+    ACM 0011 <M>
+    STM 1000 <M>
+    JMP 0100 <rel-jmp>
+    SKC 0111 <0>
+
