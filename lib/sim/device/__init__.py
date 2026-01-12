@@ -147,7 +147,7 @@ class Device(object):
 
     def hook(self, name, call):
         # Works for both inputs and actions, but call signatures are different
-        # input_hook(device, name, time, signal
+        # input_hook(device, name, time, signal)
         # action_hook(device, name, time, *args, **kwargs)
         hooks = self._hooks.get(name, [])
         hooks.append(call)

@@ -9,14 +9,14 @@ from sim.tests import okeq
 
 # Test sequencer
 def callback1(time):
-    msg = 'callback1(t={})'
+    msg = 'GOT callback1(t={})'
     print(msg.format(time))
 
 
 def callback2(time):
-    msg = 'callback2(t={})'
+    msg = 'GOT callback2(t={})'
     print(msg.format(time))
-    return [(7, callback1)]
+    return [(time + 3, callback1)]
 
 
 print ('test single ...')

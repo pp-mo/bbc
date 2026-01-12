@@ -54,7 +54,7 @@ class PulseLatchView(DeviceView):
 
         coords = np.array([[min_x, max_x, max_x, min_x],
                            [min_y, min_y, max_y, max_y]],
-                          dtype=np.float)
+                          dtype=np.float32)
         coords = coords.transpose()
         poly = Polygon(xy=coords, closed=True,
                        **self.outline_poly_kwargs)
